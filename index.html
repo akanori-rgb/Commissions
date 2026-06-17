@@ -216,7 +216,6 @@
       </div>
     </section>
 
-
     <!-- ====== ABOUT ====== -->
     <section class="about-strip" id="about">
       <div class="container">
@@ -319,6 +318,147 @@
     </div>
   </footer>
 
+  <style>
+    /* ====== GALLERY CARD — adaptive border ====== */
+    .gallery-card {
+      aspect-ratio: unset;
+    }
+    .gallery-card--featured {
+      aspect-ratio: unset;
+    }
+    @media (max-width: 680px) {
+      .gallery-card--featured { aspect-ratio: unset; }
+    }
+
+    .gallery-card-placeholder {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      min-height: 220px;
+    }
+    .gallery-card img.gallery-card-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: unset;
+    }
+
+    /* ====== LIGHTBOX ====== */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox.is-open { display: flex; }
+
+    .lightbox-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 3, 3, 0.92);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      cursor: pointer;
+    }
+
+    .lightbox-panel {
+      position: relative;
+      z-index: 1;
+      max-width: min(90vw, 900px);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      animation: lbFadeIn 0.2s ease;
+    }
+    @keyframes lbFadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: -2.5rem;
+      right: 0;
+      background: var(--color-panel, #120e0e);
+      border: 1px solid var(--color-border-bright, #4a2020);
+      color: var(--color-text-muted, #8a7a6a);
+      width: 32px;
+      height: 32px;
+      border-radius: 0.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 180ms ease;
+      flex-shrink: 0;
+    }
+    .lightbox-close:hover {
+      color: var(--color-red-bright, #e04040);
+      border-color: var(--color-red, #c0392b);
+    }
+
+    .lightbox-img-wrap {
+      max-width: 100%;
+      max-height: calc(90vh - 5rem);
+      border: 1px solid var(--color-border-bright, #4a2020);
+      box-shadow: 0 0 0 1px var(--color-primary, #8b1a1a), 0 20px 60px rgba(0,0,0,0.9);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox-img-wrap::before,
+    .lightbox-img-wrap::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      border-color: var(--color-red-bright, #e04040);
+      border-style: solid;
+      border-width: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .lightbox-img-wrap::before { top: 6px; left: 6px; border-top-width: 2px; border-left-width: 2px; }
+    .lightbox-img-wrap::after  { bottom: 6px; right: 6px; border-bottom-width: 2px; border-right-width: 2px; }
+
+    .lightbox-img-wrap img {
+      display: block;
+      max-width: 100%;
+      max-height: calc(90vh - 5rem);
+      height: auto;
+      width: auto;
+    }
+    .lightbox-img-wrap > div {
+      width: clamp(280px, 60vw, 700px);
+      min-height: 300px;
+    }
+
+    .lightbox-info { text-align: center; }
+    .lightbox-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-text, #d4c8b8);
+    }
+    .lightbox-meta {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-faint, #4a3d35);
+      margin-top: 0.2rem;
+    }
+  </style>
+
   <script>
     (function() {
       const toggle = document.querySelector('[data-theme-toggle]');
@@ -364,6 +504,61 @@
         entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
       }, { threshold: 0.08 });
       els.forEach(el => io.observe(el));
+    })();
+
+    /* ====== LIGHTBOX JS ====== */
+    (function() {
+      var lightbox  = document.getElementById('lightbox');
+      var backdrop  = document.getElementById('lightbox-backdrop');
+      var closeBtn  = document.getElementById('lightbox-close');
+      var imgWrap   = document.getElementById('lightbox-img-wrap');
+      var titleEl   = document.getElementById('lightbox-title');
+      var metaEl    = document.getElementById('lightbox-meta');
+
+      function openLightbox(card) {
+        imgWrap.innerHTML = '';
+
+        var imgEl = card.querySelector('img.gallery-card-image');
+        if (imgEl) {
+          // Echtes Bild — neues <img> erstellen damit Styles nicht vererbt werden
+          var newImg = document.createElement('img');
+          newImg.src = imgEl.src;
+          newImg.alt = imgEl.alt || '';
+          newImg.style.cssText = 'display:block;max-width:90vw;max-height:80vh;width:auto;height:auto;';
+          imgWrap.appendChild(newImg);
+        } else {
+          // Placeholder (kein echtes Bild)
+          var ph = card.querySelector('.gallery-card-placeholder');
+          if (ph) { imgWrap.appendChild(ph.cloneNode(true)); }
+        }
+
+        titleEl.textContent = card.dataset.lightboxTitle || '';
+        metaEl.textContent  = card.dataset.lightboxMeta  || '';
+        lightbox.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        closeBtn.focus();
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove('is-open');
+        document.body.style.overflow = '';
+      }
+
+      document.querySelectorAll('.gallery-card').forEach(function(card) {
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-label', (card.dataset.lightboxTitle || 'Bild') + ' vergrößern');
+        card.addEventListener('click', function() { openLightbox(card); });
+        card.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(card); }
+        });
+      });
+
+      closeBtn.addEventListener('click', closeLightbox);
+      backdrop.addEventListener('click', closeLightbox);
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeLightbox();
+      });
     })();
   </script>
 <script data-pplx-inline-edit>
